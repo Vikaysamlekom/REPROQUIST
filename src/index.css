@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Tema REPRODUKSI QUEST — educational adventure, ramah anak
+   ============================================================ */
+@theme {
+  --color-ink: #24304a;
+  --color-muted: #66738e;
+  --color-primary: #6654d9;
+  --color-primary-dark: #4f3fc0;
+  --color-pink: #f27ba5;
+  --color-mint: #6ccbb5;
+  --color-sun: #ffd66b;
+  --color-paper: #f7f8ff;
+  --color-line: #e8eaf5;
+  --color-navy: #22294a;
+
+  --font-display: 'Baloo 2', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --shadow-card: 0 16px 45px rgba(39, 51, 90, 0.08);
+  --shadow-pop: 0 20px 50px rgba(102, 84, 217, 0.22);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fokus keyboard yang jelas untuk navigasi siswa & aksesibilitas */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* Animasi dihormati bila pengguna meminta pengurangan gerak */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
