@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model 3D Penis (Anatomi)</title>
+<style>
+  :root{ --bg1:#14303a; --bg2:#0a171d; --ink:#eaf2f1; --mute:#9fb7b8; --line:#2c4b55; --panel:#0f232b; }
+  @media (prefers-color-scheme: light){
+    :root{ --bg1:#f3e7e2; --bg2:#e2d0ca; --ink:#2a1d1b; --mute:#6d5753; --line:#c9b0a9; --panel:#f8efeb; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg2)}
+  .app{display:grid;grid-template-columns:1fr 320px;min-height:100%;max-width:1150px;margin:0 auto}
+  .stage{position:relative;min-height:460px;background:radial-gradient(ellipse at 40% 35%,var(--bg1),var(--bg2) 75%);overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  canvas:active{cursor:grabbing}
+  .tools{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;z-index:3}
+  .tools button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer}
+  .tools button[aria-pressed="true"]{background:var(--ink);color:var(--bg2);border-color:var(--ink)}
+  .tools button:focus-visible,.legend button:focus-visible{outline:2px solid #e8b04a;outline-offset:2px}
+  .hint{position:absolute;top:12px;left:14px;font-size:13px;color:var(--mute);z-index:3;pointer-events:none}
+  .tag{position:absolute;z-index:2;transform:translate(10px,-50%);font-size:12px;padding:3px 8px;border-radius:6px;
+    background:var(--panel);border:1px solid var(--line);white-space:nowrap;pointer-events:none;transition:opacity .15s}
+  .side{padding:20px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+  .side h1{font-size:20px;line-height:1.25;margin:0}
+  .side h2{font-size:13px;font-weight:600;margin:0;color:var(--mute)}
+  .side p{margin:0;font-size:14px;line-height:1.55;color:var(--mute)}
+  .legend{display:flex;flex-direction:column;gap:2px}
+  .legend button{display:flex;align-items:center;gap:10px;text-align:left;font:inherit;font-size:14px;color:var(--ink);
+    background:none;border:1px solid transparent;border-radius:8px;padding:7px 10px;cursor:pointer}
+  .legend button:hover{border-color:var(--line)}
+  .legend button[aria-pressed="true"]{border-color:var(--ink);background:rgba(127,127,127,.12)}
+  .dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.3)}
+  #info{min-height:84px;color:var(--ink)}
+  #xs{width:100%;max-width:240px;height:auto;display:block;margin:0 auto}
+  #xs [data-p]{transition:opacity .2s}
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr}
+    .stage{height:60vh;min-height:360px}
+    .side{border-left:0;border-top:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Model 3D anatomi penis yang dapat diputar"></canvas>
+    <div class="hint">Seret untuk memutar, tombol +/− untuk zoom</div>
+    <div class="tools">
+      <button id="bCut" aria-pressed="false">Potongan</button>
+      <button id="bLab" aria-pressed="true">Label</button>
+      <button id="bRot" aria-pressed="true">Goyang otomatis</button>
+      <button id="bIn" aria-label="Perbesar">+</button>
+      <button id="bOut" aria-label="Perkecil">−</button>
+    </div>
+  </div>
+  <aside class="side">
+    <h1>Penis (anatomi)</h1>
+    <p>Organ kemih sekaligus reproduksi laki-laki. Tersusun dari tiga silinder jaringan erektil: dua korpus kavernosum dan satu korpus spongiosum. Mode potongan membelah model di garis tengah.</p>
+    <h2>Penampang melintang (skema)</h2>
+    <svg id="xs" viewBox="0 0 200 140" role="img" aria-label="Skema penampang melintang batang penis">
+      <ellipse data-p="skin" cx="100" cy="72" rx="70" ry="60" fill="#d3a08a"/>
+      <ellipse data-p="fascia" cx="100" cy="72" rx="62" ry="52" fill="#c46c5f"/>
+      <g data-p="cavernosum">
+        <circle cx="82" cy="66" r="27" fill="#b83a4f" stroke="#e9e1d6" stroke-width="4"/>
+        <circle cx="118" cy="66" r="27" fill="#b83a4f" stroke="#e9e1d6" stroke-width="4"/>
+      </g>
+      <g data-p="spongiosum"><circle cx="100" cy="106" r="16" fill="#d98d9a" stroke="#e9e1d6" stroke-width="2"/></g>
+      <g data-p="urethra"><ellipse cx="100" cy="106" rx="7" ry="2.6" fill="#5a1d2e"/></g>
+      <g data-p="vessels">
+        <circle cx="100" cy="30" r="4.5" fill="#3d5fa8"/>
+        <circle cx="89" cy="32" r="3" fill="#c0392b"/><circle cx="111" cy="32" r="3" fill="#c0392b"/>
+        <circle cx="78" cy="35" r="2.5" fill="#e0b92e"/><circle cx="122" cy="35" r="2.5" fill="#e0b92e"/>
+      </g>
+    </svg>
+    <div class="legend" id="legend"></div>
+    <p id="info"></p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var V3=THREE.Vector3, M=40;
+  var INNER={fascia:1,cavernosum:1,spongiosum:1,urethra:1,vessels:1};
+  var PARTS=[
+    {id:'skin',name:'Kulit batang',color:0xd3a08a,
+     desc:'Kulit tipis, longgar, dan hampir tanpa lemak sehingga dapat meregang. Menutupi seluruh batang penis.'},
+    {id:'prepuce',name:'Preputium (kulup)',color:0xd9937a,
+     desc:'Lipatan kulit di sekitar leher glans yang dapat ditarik. Pada sebagian laki-laki dibuang melalui sirkumsisi.'},
+    {id:'fascia',name:'Fasia dartos dan Buck',color:0xc46c5f,
+     desc:'Di bawah kulit ada fasia dartos, lalu fasia Buck yang membungkus ketiga korpus. Pembuluh dan saraf dorsal berjalan tepat di bawah fasia Buck.'},
+    {id:'cavernosum',name:'Korpus kavernosum (2)',color:0xb83a4f,
+     desc:'Dua silinder jaringan erektil di sisi atas (dorsal), dibungkus tunika albuginea yang kuat. Ruang-ruang sinusoidnya terisi darah saat ereksi. Septum di antaranya tidak utuh.'},
+    {id:'spongiosum',name:'Korpus spongiosum',color:0xd98d9a,
+     desc:'Satu silinder jaringan erektil di sisi bawah (ventral) yang membungkus uretra. Lebih lunak daripada korpus kavernosum sehingga uretra tetap terbuka saat ereksi. Melebar di ujung menjadi glans.'},
+    {id:'urethra',name:'Uretra',color:0x7a2a3d,
+     desc:'Uretra pars spongiosa mengalirkan urin dan air mani. Bermuara di ujung glans pada meatus uretra eksternum.'},
+    {id:'glans',name:'Glans penis',color:0xd9778a,
+     desc:'Ujung penis yang melebar dari korpus spongiosum, dengan tepi mahkota (korona) dan alur di belakangnya (sulkus koronarius). Kaya ujung saraf sensorik.'},
+    {id:'vessels',name:'Pembuluh dan saraf dorsal',color:0x3d5fa8,
+     desc:'Vena dorsalis profunda di tengah, dua arteri dorsal di kiri dan kanannya, lalu saraf dorsal penis di sisi paling luar.'},
+    {id:'crura',name:'Krura penis',color:0xe9e1d6,
+     desc:'Dua perpanjangan korpus kavernosum yang melekat pada tulang di bawah panggul (ramus iskiopubik) dan menambatkan penis ke tubuh. Biasanya diselimuti otot iskiokavernosus.'},
+    {id:'bulb',name:'Bulbus penis',color:0xcf7f90,
+     desc:'Pelebaran korpus spongiosum di pangkal penis, di antara kedua krura. Uretra menembusnya, dan bagian ini diselimuti otot bulbospongiosus.'}
+  ];
+
+  var canvas=document.getElementById('c'), stage=document.getElementById('stage');
+  var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.localClippingEnabled=true;
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(38,1,0.1,60); camera.position.set(0,0,8);
+  scene.add(new THREE.HemisphereLight(0xfff1ea,0x2a3d46,0.9));
+  var key=new THREE.DirectionalLight(0xffffff,0.9); key.position.set(3,5,6); scene.add(key);
+  var rim=new THREE.DirectionalLight(0x9fd6e6,0.5); rim.position.set(-4,-1,-3); scene.add(rim);
+
+  var group=new THREE.Group(); group.position.set(-0.3,0.5,0); scene.add(group);
+  var plane=new THREE.Plane(new THREE.Vector3(0,0,-1),100), worldPlane=new THREE.Plane(), cutOn=false;
+
+  var MATS={};
+  function mat(id,color,o){
+    o=o||{};
+    var m=new THREE.MeshStandardMaterial({color:color,roughness:o.rough||0.6,side:o.side||THREE.DoubleSide,emissive:0x000000});
+    m.clippingPlanes=[worldPlane]; (MATS[id]=MATS[id]||[]).push(m); return m;
+  }
+  var col={}; PARTS.forEach(function(p){col[p.id]=p.color;});
+  function interp(keys,t){ for(var a=0;a<keys.length-1;a++){ if(t<=keys[a+1][0]){ var f=(t-keys[a][0])/(keys[a+1][0]-keys[a][0]); return keys[a][1]+(keys[a+1][1]-keys[a][1])*Math.max(0,f); } } return keys[keys.length-1][1]; }
+  function sm(a,b,t){ t=Math.max(0,Math.min(1,(t-a)/(b-a))); return t*t*(3-2*t); }
+
+  // Sumbu penis (bidang XY): pangkal di kiri, ujung di kanan
+  var curve=new THREE.CatmullRomCurve3([new V3(-0.6,0,0),new V3(0.4,0.04,0),new V3(1.3,0.02,0),new V3(2.0,-0.03,0),new V3(2.75,-0.12,0)]);
+  function pt(t,dy,dz){ var c=curve.getPointAt(t), T=curve.getTangentAt(t), D=new V3(-T.y,T.x,0).normalize();
+    return new V3(c.x+D.x*dy,c.y+D.y*dy,(dz||0)); }
+
+  // Tabung sepanjang sumbu: rf(t)=jari-jari, dyf(t)=geser dorsal(+)/ventral(-), dz=geser lateral
+  function along(t0,t1,n,rf,dyf,dz,material,scale){
+    var pos=[],idx=[],w=M+1,i,j; scale=scale||1;
+    for(i=0;i<=n;i++){
+      var t=t0+(t1-t0)*i/n, c=curve.getPointAt(t), T=curve.getTangentAt(t), D=new V3(-T.y,T.x,0).normalize();
+      var r=rf(t)*scale, dy=dyf(t), cx=c.x+D.x*dy, cy=c.y+D.y*dy;
+      for(j=0;j<=M;j++){ var a=j/M*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+        pos.push(cx+D.x*r*ca, cy+D.y*r*ca, dz+r*sa); }
+    }
+    for(i=0;i<n;i++) for(j=0;j<M;j++){ var A=i*w+j,B=(i+1)*w+j,C=(i+1)*w+j+1,E=i*w+j+1; idx.push(A,E,B, E,C,B); }
+    var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
+    var m=new THREE.Mesh(g,material); group.add(m); return m;
+  }
+  function zero(){return 0;}
+
+  // Kulit batang dan glans (profil luar)
+  var SK=[[0,0.52],[0.7,0.52],[0.74,0.45],[0.77,0.56],[0.85,0.5],[0.93,0.4],[0.98,0.24],[1,0]];
+  var rSk=function(t){return interp(SK,t);};
+  along(0,0.745,60,rSk,zero,0,mat('skin',col.skin,{rough:0.7,side:THREE.FrontSide}));
+  along(0,0.745,60,rSk,zero,0,mat('skin',0xc89880,{rough:0.9,side:THREE.BackSide}));
+  along(0,0.745,60,rSk,zero,0,mat('fascia',col.fascia,{rough:0.9,side:THREE.BackSide}),0.92);
+  along(0.745,1,40,rSk,zero,0,mat('glans',col.glans,{rough:0.4,side:THREE.FrontSide}));
+  along(0.745,1,40,rSk,zero,0,mat('glans',0xb5546a,{rough:0.9,side:THREE.BackSide}),0.9);
+
+  // Korpus kavernosum (2): selubung tunika (luar) dan jaringan erektil (dalam)
+  var CV=[[0,0.27],[0.7,0.27],[0.78,0.1]], rCv=function(t){return interp(CV,t);};
+  [1,-1].forEach(function(s){
+    along(0,0.78,50,rCv,function(){return 0.08;},0.08*s,mat('cavernosum',0xe9e1d6,{rough:0.4,side:THREE.FrontSide}));
+    along(0,0.78,50,rCv,function(){return 0.08;},0.08*s,mat('cavernosum',col.cavernosum,{rough:0.9,side:THREE.BackSide}),0.93);
+  });
+  // Korpus spongiosum dan uretra
+  var SP=[[0,0.15],[0.7,0.15],[0.76,0.32],[0.8,0.3]], dySp=function(t){return -0.28*(1-sm(0.7,0.8,t));};
+  along(0,0.8,50,function(t){return interp(SP,t);},dySp,0,mat('spongiosum',0xe9d0d4,{rough:0.5,side:THREE.FrontSide}));
+  along(0,0.8,50,function(t){return interp(SP,t);},dySp,0,mat('spongiosum',col.spongiosum,{rough:0.9,side:THREE.BackSide}),0.9);
+  along(0,0.995,70,function(){return 0.045;},function(t){return -0.28*(1-sm(0.72,0.97,t));},0,mat('urethra',col.urethra,{rough:0.8}));
+  var tip=curve.getPointAt(1), meatus=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),mat('urethra',0x4a1424,{rough:0.9}));
+  meatus.scale.set(0.03,0.07,0.035); meatus.position.set(tip.x-0.01,tip.y,0); group.add(meatus);
+
+  // Pembuluh dan saraf dorsal
+  var dy0=function(){return 0.42;};
+  along(0.02,0.72,60,function(){return 0.04;},dy0,0,mat('vessels',0x3d5fa8,{rough:0.5}));
+  [1,-1].forEach(function(s){
+    along(0.02,0.72,60,function(){return 0.025;},dy0,0.1*s,mat('vessels',0xc0392b,{rough:0.5}));
+    along(0.02,0.72,60,function(){return 0.02;},dy0,0.19*s,mat('vessels',0xe0b92e,{rough:0.5}));
+  });
+
+  // Preputium: cincin kulit di sekitar sulkus koronarius
+  var tp=curve.getTangentAt(0.735), pp=curve.getPointAt(0.735), g1=new THREE.Group();
+  var tor=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.08,18,56),mat('prepuce',col.prepuce,{rough:0.6,side:THREE.FrontSide}));
+  tor.rotation.y=Math.PI/2; g1.add(tor); g1.position.copy(pp); g1.rotation.z=Math.atan2(tp.y,tp.x); group.add(g1);
+
+  // Pangkal: penutup kulit, krura, dan bulbus
+  var cap=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),mat('skin',col.skin,{rough:0.7}));
+  cap.scale.set(0.3,0.52,0.52); cap.position.set(-0.6,0,0); group.add(cap);
+  function tube(pts,r,m,seg){ var mesh=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),seg||40,r,16,false),m); group.add(mesh); return mesh; }
+  var cruM=mat('crura',col.crura,{rough:0.4});
+  [1,-1].forEach(function(s){
+    tube([new V3(-0.6,0.08,0.08*s),new V3(-1.1,-0.1,0.4*s),new V3(-1.6,-0.5,0.85*s),new V3(-2.0,-1.0,1.3*s)],0.25,cruM);
+  });
+  var rootPath=[new V3(-0.6,-0.28,0),new V3(-1.0,-0.5,0),new V3(-1.5,-0.8,0),new V3(-1.9,-1.2,0)];
+  tube(rootPath,0.15,mat('spongiosum',col.spongiosum,{rough:0.5}));
+  tube(rootPath,0.045,mat('urethra',col.urethra,{rough:0.8}));
+  var bulb=new THREE.Mesh(new THREE.SphereGeometry(1,36,24),mat('bulb',col.bulb,{rough:0.5}));
+  bulb.scale.set(0.45,0.33,0.3); bulb.position.set(-1.55,-0.85,0); bulb.rotation.z=-0.55; group.add(bulb);
+
+  // Label
+  var anchors={};
+  function anchor(id,v){ var o=new THREE.Object3D(); o.position.copy(v); group.add(o); anchors[id]=o; }
+  anchor('skin',pt(0.12,0.53,0));
+  anchor('vessels',pt(0.42,0.43,0));
+  anchor('fascia',pt(0.58,0.47,0));
+  anchor('prepuce',pt(0.735,0.58,0));
+  anchor('glans',pt(0.9,0.42,0));
+  anchor('urethra',pt(0.93,0,0));
+  anchor('cavernosum',pt(0.25,0.08,0));
+  anchor('spongiosum',pt(0.42,-0.28,0));
+  anchor('crura',new V3(-1.4,-0.25,0.55));
+  anchor('bulb',new V3(-1.55,-0.85,0.3));
+
+  // Legenda, penampang, dan kontrol
+  var legend=document.getElementById('legend'), info=document.getElementById('info'), sel=null, labelsOn=true, tags={};
+  var bCut=document.getElementById('bCut'), svgParts=document.querySelectorAll('#xs [data-p]');
+  var svgIds={skin:1,fascia:1,cavernosum:1,spongiosum:1,urethra:1,vessels:1};
+  function setCut(on){ cutOn=on; plane.constant=on?0:100; bCut.setAttribute('aria-pressed',String(on)); }
+  PARTS.forEach(function(t){
+    var b=document.createElement('button'); b.setAttribute('aria-pressed','false');
+    b.innerHTML='<span class="dot" style="background:#'+('000000'+t.color.toString(16)).slice(-6)+'"></span>'+t.name;
+    b.onclick=function(){ select(sel===t.id?null:t.id); }; t.btn=b; legend.appendChild(b);
+    var el=document.createElement('div'); el.className='tag'; el.textContent=t.name; stage.appendChild(el); tags[t.id]=el;
+  });
+  function select(id){
+    sel=id; PARTS.forEach(function(t){ t.btn.setAttribute('aria-pressed',String(t.id===id)); });
+    var t=PARTS.filter(function(x){return x.id===id;})[0]; info.textContent=t?t.desc:'';
+    if(INNER[id]&&!cutOn) setCut(true);
+    Array.prototype.forEach.call(svgParts,function(e){
+      e.style.opacity=(id&&svgIds[id]&&e.getAttribute('data-p')!==id)?0.3:1; });
+  }
+  select(null);
+  function toggle(btn,fn){ btn.onclick=function(){ var on=btn.getAttribute('aria-pressed')!=='true'; btn.setAttribute('aria-pressed',on); fn(on); }; }
+  var auto=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bRot=document.getElementById('bRot'); bRot.setAttribute('aria-pressed',String(auto));
+  toggle(bCut,setCut);
+  toggle(document.getElementById('bLab'),function(on){labelsOn=on;});
+  toggle(bRot,function(on){auto=on;});
+  var zoom=8;
+  document.getElementById('bIn').onclick=function(){zoom=Math.max(4.5,zoom-0.8);};
+  document.getElementById('bOut').onclick=function(){zoom=Math.min(14,zoom+0.8);};
+
+  var userY=-0.25,userX=0.12,drag=false,lx=0,ly=0;
+  canvas.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',function(e){ if(!drag)return;
+    userY+=(e.clientX-lx)*0.008; userX=Math.max(-1.3,Math.min(1.3,userX+(e.clientY-ly)*0.008)); lx=e.clientX;ly=e.clientY;});
+  function up(){drag=false;} canvas.addEventListener('pointerup',up); canvas.addEventListener('pointercancel',up);
+
+  var base=1;
+  function resize(){
+    var w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix(); base=w/h<1.2?1.7:1;
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  var clock=new THREE.Clock(), tmp=new V3(), cen=new V3();
+  function frame(){
+    var t=clock.getElapsedTime();
+    group.rotation.x=userX;
+    group.rotation.y=userY+(auto&&!drag?Math.sin(t*0.5)*0.4:0);
+    camera.position.z+=(zoom*base-camera.position.z)*0.12;
+    group.updateMatrixWorld(true);
+    worldPlane.copy(plane).applyMatrix4(group.matrixWorld);
+    var pulse=0.25+0.2*Math.sin(t*4);
+    PARTS.forEach(function(p){ MATS[p.id].forEach(function(m){
+      m.emissive.setHex(p.id===sel?p.color:0x000000); m.emissiveIntensity=p.id===sel?pulse:0; }); });
+    renderer.render(scene,camera);
+    camera.updateMatrixWorld(); var inv=camera.matrixWorldInverse;
+    cen.set(0,0,0).applyMatrix4(group.matrixWorld).applyMatrix4(inv);
+    var W=stage.clientWidth,H=stage.clientHeight;
+    PARTS.forEach(function(p){
+      var an=anchors[p.id], el=tags[p.id]; an.getWorldPosition(tmp);
+      var vz=tmp.clone().applyMatrix4(inv).z; tmp.project(camera);
+      el.style.left=((tmp.x*0.5+0.5)*W)+'px'; el.style.top=((-tmp.y*0.5+0.5)*H)+'px';
+      var ok=labelsOn&&vz>cen.z-0.9&&(!INNER[p.id]||cutOn);
+      el.style.opacity=ok?(sel&&sel!==p.id?0.35:1):0;
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>

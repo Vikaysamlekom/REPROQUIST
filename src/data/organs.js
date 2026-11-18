@@ -5,7 +5,9 @@ import { OVARIUM_STAGES, OVARIUM_PANEL } from './ovariumStages.js'
  * Bahasa disederhanakan untuk siswa kelas V SD: ilmiah, sopan, sesuai usia.
  *
  * `modelPath` menunjuk file GLB/GLTF di folder `public/models/`.
- * Saat isinya `null`, viewer 3D akan menampilkan status placeholder yang jelas
+ * `modelHtml` menunjuk viewer 3D interaktif (Three.js) di `public/models-3d/`
+ * untuk organ yang modelnya dibuat sebagai halaman mandiri, bukan GLB.
+ * Saat keduanya `null`, viewer menampilkan status placeholder yang jelas
  * (bukan gambar 2D yang menyamar sebagai model 3D).
  *
  * `stages`  -> daftar tahap yang bisa disorot pada model (legenda interaktif)
@@ -54,7 +56,8 @@ export const ORGANS = [
       'Sel telur yang dilepaskan ovarium berjalan melewati tuba falopi. Bila bertemu sperma, pembuahan dapat terjadi di saluran ini, lalu hasilnya menuju rahim.',
     fact: 'Tuba falopi sering disebut juga saluran telur dan selalu berjumlah dua saluran.',
     modelPath: null,
-    modelNote: 'Model 3D tuba falopi belum tersedia.',
+    modelHtml: '/models-3d/tuba-falopi.html',
+    modelNote: 'Model 3D interaktif tuba falopi (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/tuba-falopi.jpg',
       alt: 'Ilustrasi potongan rahim yang menunjukkan tuba falopi dan ovarium di kiri-kanan',
@@ -82,7 +85,8 @@ export const ORGANS = [
       'Jika terjadi pembuahan, hasilnya akan menempel dan tumbuh di dinding rahim. Rahim membesar mengikuti pertumbuhan janin hingga siap dilahirkan.',
     fact: 'Rahim juga dikenal dengan nama lain, yaitu uterus.',
     modelPath: null,
-    modelNote: 'Model 3D rahim belum tersedia.',
+    modelHtml: '/models-3d/rahim.html',
+    modelNote: 'Model 3D interaktif rahim/uterus (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/rahim.jpg',
       alt: 'Ilustrasi rahim dari arah depan beserta tuba falopi dan ovarium di kedua sisi',
@@ -106,7 +110,8 @@ export const ORGANS = [
       'Vagina menghubungkan rahim dengan bagian luar tubuh. Saluran ini juga berperan dalam proses kelahiran bayi.',
     fact: 'Menggunakan istilah ilmiah dengan tepat dan sopan adalah bagian dari belajar yang baik.',
     modelPath: null,
-    modelNote: 'Model 3D vagina belum tersedia.',
+    modelHtml: '/models-3d/vagina.html',
+    modelNote: 'Model 3D interaktif vagina (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/vagina.jpg',
       alt: 'Ilustrasi potongan samping organ reproduksi perempuan yang menunjukkan rahim, serviks, dan vagina',
@@ -142,7 +147,8 @@ export const ORGANS = [
       'Testis terus memproduksi sel sperma. Sel sperma ini kemudian berjalan melalui saluran di dalam tubuh hingga siap digunakan.',
     fact: 'Laki-laki memiliki dua testis yang letaknya berdampingan di dalam skrotum.',
     modelPath: null,
-    modelNote: 'Model 3D testis belum tersedia.',
+    modelHtml: '/models-3d/testis.html',
+    modelNote: 'Model 3D interaktif testis (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/testis.jpg',
       alt: 'Ilustrasi bagian dalam testis yang menunjukkan epididimis dan saluran mani',
@@ -171,7 +177,8 @@ export const ORGANS = [
       'Skrotum menjaga testis tetap aman. Kantong kulit ini dapat mengecil atau mengendur untuk menjaga suhu testis agar tetap nyaman.',
     fact: 'Skrotum berada di luar tubuh agar suhu testis tetap terjaga dengan baik.',
     modelPath: null,
-    modelNote: 'Model 3D skrotum belum tersedia.',
+    modelHtml: '/models-3d/skrotum.html',
+    modelNote: 'Model 3D interaktif skrotum (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/skrotum.jpg',
       alt: 'Ilustrasi skrotum yang menggantung di luar tubuh beserta testis dan epididimis di dalamnya',
@@ -202,7 +209,8 @@ export const ORGANS = [
       'Urine keluar dari kandung kemih melalui penis. Sel sperma juga berjalan melalui saluran yang sama saat keluar dari tubuh.',
     fact: 'Urine dan semen keluar melalui saluran yang sama, tetapi pada waktu yang berbeda.',
     modelPath: null,
-    modelNote: 'Model 3D penis belum tersedia.',
+    modelHtml: '/models-3d/penis.html',
+    modelNote: 'Model 3D interaktif penis (Three.js, putar/zoom/potongan).',
     illustration: {
       src: '/images/organ/penis.jpg',
       alt: 'Ilustrasi sistem reproduksi laki-laki dari samping yang menunjukkan penis, uretra, kandung kemih, dan prostat',

@@ -7,7 +7,7 @@
  *   2. Kontrol 3D: potongan, label, putar otomatis, zoom in/out
  *   3. Label tahap menempel pada model
  *   4. Legenda tahap: klik -> sorotan aktif + penjelasan muncul
- *   5. Organ tanpa model TETAP menampilkan placeholder yang jelas
+ *   5. Organ lain juga memiliki model 3D interaktif (viewer HTML/Three.js)
  *   6. Tidak ada error console/runtime
  *
  * Pemakaian: node scripts/model-3d-test.mjs [baseURL] [organ]
@@ -288,22 +288,23 @@ try {
     await evaljs(`window.scrollTo(0, 0)`)
   }
 
-  /* ============ 5. ORGAN TANPA MODEL (PLACEHOLDER) ============ */
-  console.log('\n--- 5. Organ lain tetap placeholder ---')
-  const placeholderOrgan = ORGAN === 'tuba-falopi' ? 'rahim' : 'tuba-falopi'
-  await goto(`/organ/${placeholderOrgan}`, `document.querySelectorAll('canvas').length > 0`)
-  const ph = await evaljs(`(() => {
+  /* ============ 5. ORGAN LAIN: MODEL 3D INTERAKTIF (HTML) ============ */
+  console.log('\n--- 5. Organ lain memakai model 3D interaktif ---')
+  const otherOrgan = ORGAN === 'tuba-falopi' ? 'rahim' : 'tuba-falopi'
+  await goto(`/organ/${otherOrgan}`, `Boolean(document.querySelector('iframe[src*="/models-3d/"]'))`)
+  const other = await evaljs(`(() => {
+    const f = document.querySelector('iframe[src*="/models-3d/"]')
     const body = document.body.innerText.toLowerCase()
     return {
+      src: f ? f.getAttribute('src') : null,
+      hasCanvas: Boolean(f && f.contentDocument && f.contentDocument.querySelector('canvas')),
       placeholder: body.includes('model 3d belum tersedia'),
-      note: body.includes('belum tersedia'),
-      noModelAttr: !document.body.innerText.includes('/models/${placeholderOrgan}.glb'),
     }
   })()`)
   ok(
-    `Organ tanpa model tetap menampilkan placeholder (${placeholderOrgan})`,
-    ph.placeholder && ph.note && ph.noModelAttr,
-    JSON.stringify(ph),
+    `Organ lain memakai model 3D interaktif (${otherOrgan})`,
+    other.src === `/models-3d/${otherOrgan}.html` && other.hasCanvas && !other.placeholder,
+    JSON.stringify(other),
   )
 
   /* ================== LAPORAN ================== */

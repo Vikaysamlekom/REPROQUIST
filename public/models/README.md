@@ -24,7 +24,10 @@ Letakkan file model **GLB/GLTF** di sini, lalu hubungkan ke data organ.
 | File | Organ | Status |
 |---|---|---|
 | `ovarium.glb` | Ovarium | ✅ Tersedia (2,19 MB, 64 mesh, 7 tahap folikel) |
-| — | 6 organ lainnya | **Placeholder** dengan status jelas ("Model 3D belum tersedia") — bukan gambar 2D yang menyamar sebagai model 3D |
+| — | 6 organ lainnya | ✅ Memakai viewer 3D HTML/Three.js di `public/models-3d/` (lihat README utama) |
+
+Folder ini khusus model **GLB/GLTF** yang dirender oleh React Three Fiber.
+Viewer 3D mandiri untuk 6 organ lain ada di `../models-3d/`.
 
 ### Tentang `ovarium.glb`
 

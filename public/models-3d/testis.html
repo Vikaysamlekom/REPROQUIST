@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model 3D Testis</title>
+<style>
+  :root{ --bg1:#14303a; --bg2:#0a171d; --ink:#eaf2f1; --mute:#9fb7b8; --line:#2c4b55; --panel:#0f232b; }
+  @media (prefers-color-scheme: light){
+    :root{ --bg1:#f3e7e2; --bg2:#e2d0ca; --ink:#2a1d1b; --mute:#6d5753; --line:#c9b0a9; --panel:#f8efeb; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg2)}
+  .app{display:grid;grid-template-columns:1fr 300px;min-height:100%;max-width:1100px;margin:0 auto}
+  .stage{position:relative;min-height:460px;background:radial-gradient(ellipse at 40% 35%,var(--bg1),var(--bg2) 75%);overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  canvas:active{cursor:grabbing}
+  .tools{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;z-index:3}
+  .tools button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer}
+  .tools button[aria-pressed="true"]{background:var(--ink);color:var(--bg2);border-color:var(--ink)}
+  .tools button:focus-visible,.legend button:focus-visible{outline:2px solid #e8b04a;outline-offset:2px}
+  .hint{position:absolute;top:12px;left:14px;font-size:13px;color:var(--mute);z-index:3;pointer-events:none}
+  .tag{position:absolute;z-index:2;transform:translate(10px,-50%);font-size:12px;padding:3px 8px;border-radius:6px;
+    background:var(--panel);border:1px solid var(--line);white-space:nowrap;pointer-events:none;transition:opacity .15s}
+  .side{padding:20px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+  .side h1{font-size:20px;line-height:1.25;margin:0}
+  .side p{margin:0;font-size:14px;line-height:1.55;color:var(--mute)}
+  .legend{display:flex;flex-direction:column;gap:4px}
+  .legend button{display:flex;align-items:center;gap:10px;text-align:left;font:inherit;font-size:14px;color:var(--ink);
+    background:none;border:1px solid transparent;border-radius:8px;padding:8px 10px;cursor:pointer}
+  .legend button:hover{border-color:var(--line)}
+  .legend button[aria-pressed="true"]{border-color:var(--ink);background:rgba(127,127,127,.12)}
+  .dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.3)}
+  #info{min-height:84px;color:var(--ink)}
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr}
+    .stage{height:64vh;min-height:380px}
+    .side{border-left:0;border-top:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Model 3D testis yang dapat diputar"></canvas>
+    <div class="hint">Seret untuk memutar, tombol +/− untuk zoom</div>
+    <div class="tools">
+      <button id="bCut" aria-pressed="false">Potongan</button>
+      <button id="bLab" aria-pressed="true">Label</button>
+      <button id="bRot" aria-pressed="true">Goyang otomatis</button>
+      <button id="bIn" aria-label="Perbesar">+</button>
+      <button id="bOut" aria-label="Perkecil">−</button>
+    </div>
+  </div>
+  <aside class="side">
+    <h1>Testis</h1>
+    <p>Gonad laki-laki berbentuk oval, berukuran sekitar 4–5 cm. Pilih bagian di bawah untuk menyorotnya. Mode potongan menampilkan bagian dalam testis.</p>
+    <div class="legend" id="legend"></div>
+    <p id="info"></p>
+  </aside>
+</div>
+
+<script src="/vendor/three-r128.min.js"></script>
+<script>
+(function(){
+  var V3=THREE.Vector3, N=260, M=32;
+  var PARTS=[
+    {id:'testis',name:'Testis (tunika albuginea)',color:0xe6d8c4,
+     desc:'Selubung jaringan ikat padat berwarna putih yang membungkus testis. Ke dalam, ia membentuk septa yang membagi testis menjadi sekitar 250 lobulus.'},
+    {id:'tubules',name:'Tubulus seminiferus',color:0xf0d27a,
+     desc:'Tubulus berkelok tempat sperma dibentuk (spermatogenesis). Setiap lobulus berisi 1–4 tubulus, dan total panjangnya dapat mencapai ratusan meter. Terlihat pada mode potongan.'},
+    {id:'mediastinum',name:'Mediastinum dan rete testis',color:0xf5efe6,
+     desc:'Mediastinum testis adalah penebalan tunika albuginea di sisi belakang. Tubulus lurus bermuara ke rete testis di dalamnya, lalu sperma mengalir lewat duktulus eferen (12–20 saluran kecil) ke kepala epididimis.'},
+    {id:'head',name:'Epididimis: kaput',color:0xd9937a,
+     desc:'Kepala epididimis di bagian atas testis. Menerima sperma dari duktulus eferen.'},
+    {id:'bodyE',name:'Epididimis: korpus',color:0xc9806b,
+     desc:'Badan epididimis menyusuri sisi belakang testis. Sperma matang dan mulai dapat bergerak selama transit di sini. Bila diluruskan, saluran epididimis sepanjang sekitar 6 m.'},
+    {id:'tail',name:'Epididimis: kauda',color:0xb96f5f,
+     desc:'Ekor epididimis di bagian bawah, tempat sperma disimpan. Berlanjut menjadi duktus deferens.'},
+    {id:'vas',name:'Duktus (vas) deferens',color:0xe8c9a6,
+     desc:'Saluran berotot tebal sepanjang sekitar 45 cm yang membawa sperma naik di dalam funikulus spermatikus menuju uretra.'},
+    {id:'cord',name:'Funikulus spermatikus',color:0xa9b8d9,
+     desc:'Berkas yang membungkus duktus deferens, arteri testikularis, pleksus pampiniformis (vena), saraf, dan pembuluh limfe. Pleksus membantu menjaga suhu testis sedikit di bawah suhu tubuh.'}
+  ];
+
+  var canvas=document.getElementById('c'), stage=document.getElementById('stage');
+  var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.localClippingEnabled=true;
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(38,1,0.1,60); camera.position.set(0,0,9);
+  scene.add(new THREE.HemisphereLight(0xfff1ea,0x2a3d46,0.9));
+  var key=new THREE.DirectionalLight(0xffffff,0.9); key.position.set(3,5,6); scene.add(key);
+  var rim=new THREE.DirectionalLight(0x9fd6e6,0.5); rim.position.set(-4,-1,-3); scene.add(rim);
+
+  var group=new THREE.Group(); group.position.y=-1.0; scene.add(group);
+  var plane=new THREE.Plane(new THREE.Vector3(0,0,-1),100), worldPlane=new THREE.Plane(), cutOn=false;
+
+  var MATS={};
+  function mat(id,color,o){
+    o=o||{};
+    var m=new THREE.MeshStandardMaterial({color:color,roughness:o.rough||0.6,side:o.side||THREE.DoubleSide,
+      transparent:!!o.op,opacity:o.op||1,depthWrite:!o.op,emissive:0x000000});
+    m.clippingPlanes=[worldPlane]; (MATS[id]=MATS[id]||[]).push(m); return m;
+  }
+  var col={}; PARTS.forEach(function(p){col[p.id]=p.color;});
+  var seed=11; function rnd(){ seed=(seed*16807)%2147483647; return seed/2147483647; }
+
+  // Testis: elipsoid dengan permukaan sedikit tidak rata
+  var SX=0.95,SY=1.25,SZ=0.8;
+  var tg=new THREE.SphereGeometry(1,64,48), p=tg.attributes.position, v=new V3();
+  for(var i=0;i<p.count;i++){ v.fromBufferAttribute(p,i);
+    var k=1+Math.sin(v.x*4+1)*Math.sin(v.y*5)*Math.sin(v.z*3)*0.015;
+    p.setXYZ(i,v.x*SX*k,v.y*SY*k,v.z*SZ*k); }
+  tg.computeVertexNormals();
+  group.add(new THREE.Mesh(tg,mat('testis',col.testis,{rough:0.35,side:THREE.FrontSide})));
+  var tg2=tg.clone(); var q=tg2.attributes.position;
+  for(i=0;i<q.count;i++){ q.setXYZ(i,q.getX(i)*0.96,q.getY(i)*0.96,q.getZ(i)*0.96); }
+  group.add(new THREE.Mesh(tg2,mat('testis',0xb98c4e,{rough:0.9,side:THREE.BackSide})));
+
+  // Mediastinum testis (penebalan di belakang) dan rete testis
+  var med=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),mat('mediastinum',col.mediastinum,{rough:0.5}));
+  med.scale.set(0.07,0.8,0.12); med.position.set(0.05,0.2,-0.6); group.add(med);
+  function tube(pts,r,m){ return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),60,r,6,false),m); }
+  var retM=mat('mediastinum',0xf2dcb4,{rough:0.5}), j;
+  for(j=0;j<7;j++){
+    var y0=0.2+(rnd()-0.5)*0.8;
+    group.add(tube([new V3(0.0,y0,-0.5),new V3(0.1,y0+0.12,-0.56),new V3(-0.02,y0+0.2,-0.52),new V3(0.08,y0+0.3,-0.58)],0.016,retM));
+  }
+  // Duktulus eferen: rete testis -> kaput epididimis
+  for(j=0;j<6;j++){
+    var o=(j-2.5)*0.03;
+    group.add(tube([new V3(0.05+o,0.65,-0.58),new V3(0.14+o,0.9,-0.6),new V3(0.1+o,1.02,-0.5),new V3(0.3+o,1.1,-0.44)],0.017,retM));
+  }
+
+  // Lobulus dan tubulus seminiferus (terlihat saat dipotong)
+  var tubM=mat('tubules',col.tubules,{rough:0.6});
+  for(j=0;j<18;j++){
+    var d=new V3(rnd()*2-1,rnd()*1.6-0.8,-0.2-rnd()*0.9).normalize();
+    var e=new V3(d.x*SX,d.y*SY,d.z*SZ).multiplyScalar(0.86);
+    var m0=new V3(0.05,0.2+(rnd()-0.5)*0.6,-0.55);
+    var dir=e.clone().sub(m0), uu=new V3().crossVectors(dir,new V3(0,1,0)).normalize(), vv=new V3().crossVectors(dir,uu).normalize();
+    for(var t3=0;t3<3;t3++){
+      var ph=rnd()*6, ph2=rnd()*6, pts=[];
+      for(var s=0;s<=14;s++){ var f=s/14, amp=0.075*Math.sin(Math.PI*f)+0.01;
+        pts.push(m0.clone().lerp(e,f).add(uu.clone().multiplyScalar(Math.sin(f*16+ph)*amp)).add(vv.clone().multiplyScalar(Math.cos(f*19+ph2)*amp))); }
+      group.add(tube(pts,0.017,tubM));
+    }
+  }
+
+  // Sumbu epididimis -> duktus deferens -> funikulus
+  var curve=new THREE.CatmullRomCurve3([
+    new V3(0.35,1.05,-0.45),new V3(0.72,0.6,-0.42),new V3(0.85,0,-0.36),new V3(0.7,-0.7,-0.4),new V3(0.35,-1.15,-0.42),
+    new V3(0.05,-1.05,-0.7),new V3(-0.2,-0.4,-0.8),new V3(-0.15,0.6,-0.88),new V3(0,1.5,-0.8),new V3(0,2.4,-0.6),new V3(0,3.3,-0.45)]);
+  var fr=curve.computeFrenetFrames(N,false);
+  var RK=[[0,0.15],[0.05,0.18],[0.11,0.13],[0.28,0.1],[0.33,0.14],[0.37,0.09],[0.4,0.06],[1,0.06]];
+  function R(t){ for(var a=0;a<RK.length-1;a++){ if(t<=RK[a+1][0]){ var f=(t-RK[a][0])/(RK[a+1][0]-RK[a][0]); return RK[a][1]+(RK[a+1][1]-RK[a][1])*f; } } return 0.06; }
+  function seg(t0,t1,rfn,material){
+    var i0=Math.round(t0*N), i1=Math.round(t1*N), pos=[],idx=[],w=M+1,a,b2;
+    for(a=i0;a<=i1;a++){ var t=a/N, c=curve.getPointAt(t), nn=fr.normals[a], bb=fr.binormals[a], r=rfn(t);
+      for(b2=0;b2<=M;b2++){ var an=b2/M*Math.PI*2, ca=Math.cos(an), sa=Math.sin(an);
+        pos.push(c.x+r*(nn.x*ca+bb.x*sa),c.y+r*(nn.y*ca+bb.y*sa),c.z+r*(nn.z*ca+bb.z*sa)); } }
+    for(a=0;a<i1-i0;a++) for(b2=0;b2<M;b2++){ var A=a*w+b2,B=(a+1)*w+b2,C=(a+1)*w+b2+1,D=a*w+b2+1; idx.push(A,D,B, D,C,B); }
+    var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
+    group.add(new THREE.Mesh(g,material));
+  }
+  seg(0,0.11,R,mat('head',col.head,{rough:0.55}));
+  seg(0.11,0.28,R,mat('bodyE',col.bodyE,{rough:0.55}));
+  seg(0.28,0.37,R,mat('tail',col.tail,{rough:0.55}));
+  seg(0.37,1,R,mat('vas',col.vas,{rough:0.5}));
+  seg(0.76,1,function(t){ return 0.2*Math.min(1,(t-0.76)/0.06+0.3); },mat('cord',col.cord,{rough:0.3,op:0.3}));
+
+  function vessel(color,rad,phi,amp,wave){
+    var pts=[], k, t0=0.74, t1=1;
+    for(k=0;k<=40;k++){ var t=t0+(t1-t0)*k/40, ii=Math.round(t*N), c=curve.getPointAt(t), nn=fr.normals[ii], bb=fr.binormals[ii];
+      var rr=0.11+amp*Math.sin(t*wave+phi), an=phi+Math.sin(t*20)*0.5;
+      pts.push(c.add(nn.clone().multiplyScalar(rr*Math.cos(an))).add(bb.clone().multiplyScalar(rr*Math.sin(an)))); }
+    group.add(tube(pts,rad,mat('cord',color,{rough:0.5})));
+  }
+  vessel(0xc0392b,0.02,0.5,0.01,10);
+  [1.6,2.9,4.1,5.3].forEach(function(ph,n){ vessel(0x4b6fb5,0.022,ph,0.03,40+n*7); });
+
+  // Label
+  var anchors={};
+  function anchor(id,v){ var o=new THREE.Object3D(); o.position.copy(v); group.add(o); anchors[id]=o; }
+  anchor('testis',new V3(-0.55,0.5,0.62));
+  anchor('tubules',new V3(-0.3,-0.2,-0.3));
+  anchor('mediastinum',new V3(0.05,0.3,-0.55));
+  anchor('head',curve.getPointAt(0.04).add(new V3(0.2,0.1,0)));
+  anchor('bodyE',curve.getPointAt(0.2).add(new V3(0.15,0,0)));
+  anchor('tail',curve.getPointAt(0.33).add(new V3(0.15,-0.1,0)));
+  anchor('vas',curve.getPointAt(0.58).add(new V3(0.12,0,-0.1)));
+  anchor('cord',curve.getPointAt(0.9).add(new V3(0.25,0,0)));
+
+  // Legenda dan kontrol
+  var legend=document.getElementById('legend'), info=document.getElementById('info'), sel=null, labelsOn=true, tags={};
+  var bCut=document.getElementById('bCut');
+  function setCut(on){ cutOn=on; plane.constant=on?0:100; bCut.setAttribute('aria-pressed',String(on)); }
+  PARTS.forEach(function(t){
+    var b=document.createElement('button'); b.setAttribute('aria-pressed','false');
+    b.innerHTML='<span class="dot" style="background:#'+('000000'+t.color.toString(16)).slice(-6)+'"></span>'+t.name;
+    b.onclick=function(){ select(sel===t.id?null:t.id); }; t.btn=b; legend.appendChild(b);
+    var el=document.createElement('div'); el.className='tag'; el.textContent=t.name; stage.appendChild(el); tags[t.id]=el;
+  });
+  function select(id){
+    sel=id; PARTS.forEach(function(t){ t.btn.setAttribute('aria-pressed',String(t.id===id)); });
+    var t=PARTS.filter(function(x){return x.id===id;})[0]; info.textContent=t?t.desc:'';
+    if((id==='tubules'||id==='mediastinum')&&!cutOn) setCut(true);
+  }
+  select(null);
+  function toggle(btn,fn){ btn.onclick=function(){ var on=btn.getAttribute('aria-pressed')!=='true'; btn.setAttribute('aria-pressed',on); fn(on); }; }
+  var auto=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bRot=document.getElementById('bRot'); bRot.setAttribute('aria-pressed',String(auto));
+  toggle(bCut,setCut);
+  toggle(document.getElementById('bLab'),function(on){labelsOn=on;});
+  toggle(bRot,function(on){auto=on;});
+  var zoom=9;
+  document.getElementById('bIn').onclick=function(){zoom=Math.max(5,zoom-0.8);};
+  document.getElementById('bOut').onclick=function(){zoom=Math.min(14,zoom+0.8);};
+
+  var userY=-0.7,userX=0.05,drag=false,lx=0,ly=0;
+  canvas.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',function(e){ if(!drag)return;
+    userY+=(e.clientX-lx)*0.008; userX=Math.max(-1.3,Math.min(1.3,userX+(e.clientY-ly)*0.008)); lx=e.clientX;ly=e.clientY;});
+  function up(){drag=false;} canvas.addEventListener('pointerup',up); canvas.addEventListener('pointercancel',up);
+
+  var base=1;
+  function resize(){
+    var w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix(); base=w/h<0.9?1.3:1;
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  var clock=new THREE.Clock(), tmp=new V3(), cen=new V3();
+  function frame(){
+    var t=clock.getElapsedTime();
+    group.rotation.x=userX;
+    group.rotation.y=userY+(auto&&!drag?Math.sin(t*0.5)*0.5:0);
+    camera.position.z+=(zoom*base-camera.position.z)*0.12;
+    group.updateMatrixWorld(true);
+    worldPlane.copy(plane).applyMatrix4(group.matrixWorld);
+    var pulse=0.25+0.2*Math.sin(t*4);
+    PARTS.forEach(function(p){ MATS[p.id].forEach(function(m){
+      m.emissive.setHex(p.id===sel?p.color:0x000000); m.emissiveIntensity=p.id===sel?pulse:0; }); });
+    renderer.render(scene,camera);
+    camera.updateMatrixWorld(); var inv=camera.matrixWorldInverse;
+    cen.set(0,0,0).applyMatrix4(group.matrixWorld).applyMatrix4(inv);
+    var W=stage.clientWidth,H=stage.clientHeight;
+    PARTS.forEach(function(p){
+      var an=anchors[p.id], el=tags[p.id]; an.getWorldPosition(tmp);
+      var vz=tmp.clone().applyMatrix4(inv).z; tmp.project(camera);
+      el.style.left=((tmp.x*0.5+0.5)*W)+'px'; el.style.top=((-tmp.y*0.5+0.5)*H)+'px';
+      var ok=labelsOn&&vz>cen.z-0.9&&((p.id!=='tubules'&&p.id!=='mediastinum')||cutOn);
+      el.style.opacity=ok?(sel&&sel!==p.id?0.35:1):0;
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>

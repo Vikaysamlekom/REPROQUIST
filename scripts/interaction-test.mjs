@@ -223,7 +223,9 @@ try {
     organProgress = await evaljs(`({
       progress: localStorage.getItem('rq_progress') || '',
       title: document.title,
-      hasCanvas: Boolean(document.querySelector('canvas')),
+      hasCanvas: Boolean(document.querySelector('canvas') ||
+        document.querySelector('iframe')?.contentDocument?.querySelector('canvas')),
+      hasIframe: Boolean(document.querySelector('iframe[src*="/models-3d/"]')),
       placeholder: document.body.innerText.toLowerCase().includes('model 3d belum tersedia'),
       back: [...document.querySelectorAll('a')].some(a => a.textContent.includes('Kembali ke')),
     })`)
@@ -233,7 +235,8 @@ try {
   ok('Detail organ: judul halaman = nama organ', organProgress.title.startsWith('Tuba Falopi'),
     organProgress.title)
   ok('Detail organ: viewer 3D termuat', organProgress.hasCanvas)
-  ok('Detail organ: status placeholder jelas bila model belum ada', organProgress.placeholder)
+  ok('Detail organ: model 3D interaktif (iframe) terpasang', organProgress.hasIframe)
+  ok('Detail organ: tidak ada placeholder "belum tersedia"', !organProgress.placeholder)
   ok('Detail organ: tombol kembali ada', organProgress.back)
   ok('Detail organ: penanda "sudah dipelajari" tersimpan',
     organProgress.progress.includes('organ-tuba-falopi'))

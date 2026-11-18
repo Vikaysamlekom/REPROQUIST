@@ -92,7 +92,7 @@ terlebih dahulu.
 
 ---
 
-## 6. Cara menambahkan atau mengganti model 3D GLB/GLTF
+## 6. Cara menambahkan atau mengganti model 3D
 
 ### Langkah
 
@@ -154,31 +154,57 @@ Sumber yang umumnya aman digunakan:
 - [Sketchfab](https://sketchfab.com/) — filter lisensi CC
 - Buat sendiri di **Blender** (gratis) lalu ekspor ke glTF
 
+### Viewer 3D mandiri (opsi kedua — dipakai 6 organ)
+
+Organ `tuba-falopi`, `rahim`, `vagina`, `testis`, `skrotum`, dan `penis` memakai
+viewer 3D interaktif berbasis halaman HTML + Three.js r128 yang disimpan di
+`public/models-3d/`. Cara memasangnya:
+
+1. Letakkan file HTML viewer di `public/models-3d/` (mis. `rahim.html`).
+2. Pastikan skrip Three.js memakai salinan lokal:
+   `<script src="/vendor/three-r128.min.js"></script>` (salinan ada di `public/vendor/`).
+   Dengan begitu website tetap berfungsi tanpa koneksi internet.
+3. Di `src/data/organs.js`, isi properti `modelHtml` pada organ terkait:
+
+   ```js
+   modelHtml: '/models-3d/rahim.html',
+   modelNote: 'Model 3D interaktif rahim/uterus (Three.js, putar/zoom/potongan).',
+   ```
+
+4. Selesai — halaman detail otomatis menampilkan viewer di dalam `<iframe>`,
+   lengkap dengan tautan **Buka penuh ↗** (tab baru).
+
+Viewer HTML ini sudah mendukung putar/zoom/sentuh, tombol **Potongan**, **Label**,
+**Goyang otomatis**, legenda bagian organ, dan `prefers-reduced-motion`.
+
 ---
 
-## 7. Aset yang masih berupa placeholder
+## 7. Status model 3D & ilustrasi organ
 
-**Sudah ada 1 model GLB:** `/organ/ovarium` menampilkan model 3D asli
-(`public/models/ovarium.glb`, 2,19 MB) lengkap dengan legenda 7 tahap folikel,
-label menempel, sorotan tahap, dan tombol **Potongan** (potongan melintang).
+**Seluruh 7 organ kini memiliki model 3D interaktif** (tidak ada lagi placeholder):
 
-**6 organ lainnya** (`tuba-falopi`, `rahim`, `vagina`, `testis`, `skrotum`, `penis`)
-masih `modelPath: null` dan menampilkan placeholder:
+| Organ | Sumber model | Jumlah bagian interaktif |
+|---|---|---|
+| Ovarium | `public/models/ovarium.glb` (2,19 MB · React Three Fiber) | 7 tahap folikel + potongan |
+| Tuba falopi | `public/models-3d/tuba-falopi.html` | 7 bagian + potongan |
+| Rahim | `public/models-3d/rahim.html` | 7 bagian + potongan |
+| Vagina | `public/models-3d/vagina.html` | 6 bagian + potongan |
+| Testis | `public/models-3d/testis.html` | 8 bagian + potongan |
+| Skrotum | `public/models-3d/skrotum.html` | 8 bagian + potongan |
+| Penis | `public/models-3d/penis.html` | 10 bagian + potongan |
 
-- Viewer 3D tetap berfungsi (bisa diputar dan zoom) dengan geometri placeholder berbentuk
-  wireframe.
-- Label jelas tertulis: **"Model 3D belum tersedia"** — **bukan** gambar 2D yang menyamar
-  sebagai model 3D.
-- Slot siap diisi pada `src/data/organs.js`.
-
-### Lokasi placeholder lain
+Selain model 3D, 6 organ memiliki **gambar ilustrasi 2D** di `public/images/organ/`
+(JPG hasil optimasi 104–158 KB per file). Gambar tampil di kartu **"Ilustrasi organ"**
+dengan label tegas **"Gambar 2D statis · bukan model 3D"** dan daftar padanan istilah
+Inggris→Indonesia. Thumbnail aslinya juga dipakai di kartu daftar organ. Berkas JPG
+sumber (≈2,3 MB) diarsipkan di `assets-original/` dan **tidak** ikut ter-deploy.
 
 | Aset | Status |
 |---|---|
-| Model 3D organ | **Ovarium ✅** · 6 organ lainnya **placeholder** — slot siap diisi di `public/models/` |
+| Model 3D organ | **7/7 tersedia ✅** (1 GLB + 6 viewer HTML/Three.js) |
+| Ilustrasi 2D organ | **6 JPG** di `public/images/organ/` (ovarium cukup model GLB) |
 | Logo/favicon | Placeholder SVG bawaan (`public/favicon.svg`) — bisa diganti |
-| Ilustrasi halaman | Emoji & SVG inline (orisinal, bukan gambar eksternal) |
-| Gambar pendukung | Belum ada — folder `src/assets/` disiapkan untuk gambar |
+| Pencahayaan & material | Disiapkan di masing-masing viewer |
 
 ---
 
@@ -188,14 +214,22 @@ masih `modelPath: null` dan menampilkan placeholder:
 Reproduksi_Quest_Website/
 ├── public/
 │   ├── favicon.svg
-│   └── models/
-│       ├── README.md          panduan memasang model
-│       └── ovarium.glb        model 3D ovarium (7 tahap folikel)
+│   ├── models/
+│   │   ├── README.md          panduan memasang model
+│   │   └── ovarium.glb        model 3D ovarium (7 tahap folikel)
+│   ├── models-3d/             6 viewer 3D interaktif (HTML + Three.js r128)
+│   │   ├── tuba-falopi.html · rahim.html · vagina.html
+│   │   └── testis.html · skrotum.html · penis.html
+│   ├── images/organ/          6 ilustrasi 2D (JPG, 104–158 KB)
+│   └── vendor/
+│       └── three-r128.min.js  Three.js lokal (603 KB, tanpa CDN)
+├── assets-original/           berkas sumber pengguna (JPG & HTML asli, tidak di-deploy)
 ├── scripts/
 │   ├── smoke-test.mjs         uji render + screenshot via Chrome DevTools Protocol
 │   ├── interaction-test.mjs   uji interaksi end-to-end (kuis, game, penyimpanan)
 │   ├── network-test.mjs       uji lazy loading three.js + anti-404 seluruh route
-│   ├── model-3d-test.mjs      uji model GLB + fitur (legenda, potongan, label, zoom)
+│   ├── model-3d-test.mjs      uji model GLB ovarium + fitur interaktif
+│   ├── html-model-test.mjs    uji 6 viewer HTML/Three.js (55 pemeriksaan)
 │   └── export-ovarium-glb.mjs membangkitkan ovarium.glb dari berkas sumber
 ├── src/
 │   ├── components/
@@ -219,7 +253,7 @@ Reproduksi_Quest_Website/
 
 ## 🧪 Pengujian otomatis
 
-Empat skrip memverifikasi bahwa website **benar-benar berfungsi**, bukan sekadar tampil.
+Lima skrip memverifikasi bahwa website **benar-benar berfungsi**, bukan sekadar tampil.
 Semuanya menjalankan Chrome headless via Chrome DevTools Protocol.
 
 Jalankan dulu server preview di terminal pertama:
@@ -234,21 +268,24 @@ Lalu di terminal kedua (jalankan satu per satu — jangan paralel):
 # 1. Uji render + ambil screenshot halaman
 node scripts/smoke-test.mjs http://localhost:4173/organ/ovarium
 
-# 2. Uji interaksi end-to-end (16 pemeriksaan)
+# 2. Uji interaksi end-to-end (17 pemeriksaan)
 node scripts/interaction-test.mjs
 
 # 3. Uji pemisahan aset & anti-404 (6 pemeriksaan)
 node scripts/network-test.mjs
 
-# 4. Uji model 3D + fitur interaktif (17 pemeriksaan)
+# 4. Uji model GLB ovarium + fitur interaktif (17 pemeriksaan)
 node scripts/model-3d-test.mjs http://localhost:4173 ovarium
+
+# 5. Uji 6 viewer 3D HTML/Three.js (55 pemeriksaan)
+node scripts/html-model-test.mjs http://localhost:4173
 ```
 
 Yang diverifikasi oleh `interaction-test.mjs`:
 
 - Kuis: menjawab 12 soal → skor tersimpan di LocalStorage, tombol ulang berfungsi
 - Mencocokkan: 5 pasangan terisi → skor tampil, progres tersimpan
-- Detail organ: judul = nama organ, viewer 3D termuat, status placeholder, tombol kembali
+- Detail organ: judul = nama organ, viewer 3D termuat (GLB/iframe), tidak ada placeholder, tombol kembali
 - Slug organ tidak valid → halaman 404 dengan judul yang benar
 - Refleksi: jawaban tersimpan dan **bertahan setelah muat ulang**
 - Seluruh tautan internal menunjuk route yang valid
@@ -266,12 +303,21 @@ Yang diverifikasi oleh `model-3d-test.mjs` (organ bertopeng GLB, default `ovariu
 - Kontrol 3D lengkap: **Potongan, Label, Putar otomatis, zoom −/+**
 - 7 label tahap menempel pada model — bisa dimatikan lewat tombol Label
 - Legenda 7 tahap: klik → sorotan aktif + penjelasan tahap muncul
-- Organ tanpa model **tetap** menampilkan placeholder yang jelas
+- Organ lain juga memakai model 3D interaktif (iframe) — bukan placeholder
+- Tidak ada error console/runtime
+
+Yang diverifikasi oleh `html-model-test.mjs` (ke-6 organ dengan viewer HTML):
+
+- Halaman detail terbuka dan iframe `modelHtml` terpasang dengan src yang benar
+- Three.js **lokal** terpakai (tidak ada permintaan ke CDN)
+- Canvas WebGL 2.0 hidup dan model benar-benar tergambar (analisis keragaman warna piksel)
+- Legenda 6–10 bagian: klik → penjelasan muncul
+- Tombol **Potongan / Label / Putar otomatis / zoom ±** merespons
 - Tidak ada error console/runtime
 
 > Ganti path Chrome bila berbeda dengan `CHROME_PATH="..."`.
 > Atur ukuran layar uji mobile dengan `RQ_WIDTH=390 RQ_HEIGHT=844`.
-> Port CDP tiap skrip berbeda (9333/9344/9355/9366) — tetap jalankan satu per satu.
+> Port CDP tiap skrip berbeda (9333/9344/9355/9366/9367) — tetap jalankan satu per satu.
 
 ---
 

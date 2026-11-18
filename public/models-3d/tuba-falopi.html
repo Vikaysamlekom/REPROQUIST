@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model 3D Tuba Falopi</title>
+<style>
+  :root{ --bg1:#14303a; --bg2:#0a171d; --ink:#eaf2f1; --mute:#9fb7b8; --line:#2c4b55; --panel:#0f232b; }
+  @media (prefers-color-scheme: light){
+    :root{ --bg1:#f3e7e2; --bg2:#e2d0ca; --ink:#2a1d1b; --mute:#6d5753; --line:#c9b0a9; --panel:#f8efeb; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg2)}
+  .app{display:grid;grid-template-columns:1fr 300px;min-height:100%;max-width:1100px;margin:0 auto}
+  .stage{position:relative;min-height:420px;background:radial-gradient(ellipse at 40% 35%,var(--bg1),var(--bg2) 75%);overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  canvas:active{cursor:grabbing}
+  .tools{position:absolute;left:12px;bottom:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;z-index:3}
+  .tools button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer}
+  .tools button[aria-pressed="true"]{background:var(--ink);color:var(--bg2);border-color:var(--ink)}
+  .tools button:focus-visible,.legend button:focus-visible{outline:2px solid #e8b04a;outline-offset:2px}
+  .hint{position:absolute;top:12px;left:14px;font-size:13px;color:var(--mute);z-index:3;pointer-events:none}
+  .tag{position:absolute;z-index:2;transform:translate(10px,-50%);font-size:12px;padding:3px 8px;border-radius:6px;
+    background:var(--panel);border:1px solid var(--line);white-space:nowrap;pointer-events:none;transition:opacity .15s}
+  .side{padding:20px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+  .side h1{font-size:20px;line-height:1.25;margin:0}
+  .side p{margin:0;font-size:14px;line-height:1.55;color:var(--mute)}
+  .legend{display:flex;flex-direction:column;gap:4px}
+  .legend button{display:flex;align-items:center;gap:10px;text-align:left;font:inherit;font-size:14px;color:var(--ink);
+    background:none;border:1px solid transparent;border-radius:8px;padding:8px 10px;cursor:pointer}
+  .legend button:hover{border-color:var(--line)}
+  .legend button[aria-pressed="true"]{border-color:var(--ink);background:rgba(127,127,127,.12)}
+  .dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.3)}
+  #info{min-height:84px;color:var(--ink)}
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr}
+    .stage{height:62vh;min-height:360px}
+    .side{border-left:0;border-top:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="c" aria-label="Model 3D tuba falopi yang dapat diputar"></canvas>
+    <div class="hint">Seret untuk memutar, tombol +/− untuk zoom</div>
+    <div class="tools">
+      <button id="bCut" aria-pressed="false">Potongan</button>
+      <button id="bLab" aria-pressed="true">Label</button>
+      <button id="bRot" aria-pressed="true">Goyang otomatis</button>
+      <button id="bIn" aria-label="Perbesar">+</button>
+      <button id="bOut" aria-label="Perkecil">−</button>
+    </div>
+  </div>
+  <aside class="side">
+    <h1>Tuba falopi</h1>
+    <p>Pilih bagian di bawah untuk menyorotnya pada model. Aktifkan “Potongan” untuk melihat saluran dan lipatan mukosa di dalam tuba.</p>
+    <div class="legend" id="legend"></div>
+    <p id="info"></p>
+  </aside>
+</div>
+
+<script src="/vendor/three-r128.min.js"></script>
+<script>
+(function(){
+  var V3=THREE.Vector3, N=220, M=48;
+  var PARTS=[
+    {id:'uterus',name:'Uterus (rahim)',color:0xc9787a,
+     desc:'Tempat embrio menempel dan berkembang. Kedua tuba masuk ke rahim di sudut atas (kornu).'},
+    {id:'intramural',name:'Bagian intramural',color:0xb86a72,
+     desc:'Bagian tuba yang menembus dinding rahim. Paling sempit, lebarnya sekitar 1 mm.'},
+    {id:'isthmus',name:'Isthmus',color:0xdc8f86,
+     desc:'Bagian sempit dengan dinding otot yang tebal, tepat di sisi rahim.'},
+    {id:'ampulla',name:'Ampula',color:0xe9a898,
+     desc:'Bagian terpanjang dan terlebar, dengan lipatan mukosa yang banyak. Pembuahan biasanya terjadi di sini.'},
+    {id:'infundibulum',name:'Infundibulum',color:0xf0bba6,
+     desc:'Ujung berbentuk corong yang terbuka ke rongga perut, dekat ovarium.'},
+    {id:'fimbria',name:'Fimbria',color:0xf4a7a0,
+     desc:'Jari-jari halus di tepi corong. Menyapu permukaan ovarium dan menangkap oosit saat ovulasi.'},
+    {id:'ovary',name:'Ovarium',color:0xe3b2a0,
+     desc:'Menghasilkan oosit dan hormon. Pada model ini tampak beberapa folikel kecil di permukaannya.'}
+  ];
+
+  var canvas=document.getElementById('c'), stage=document.getElementById('stage');
+  var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.localClippingEnabled=true;
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(38,1,0.1,60); camera.position.set(0,0,9.5);
+  scene.add(new THREE.HemisphereLight(0xfff1ea,0x2a3d46,0.9));
+  var key=new THREE.DirectionalLight(0xffffff,0.9); key.position.set(3,5,6); scene.add(key);
+  var rim=new THREE.DirectionalLight(0x9fd6e6,0.5); rim.position.set(-4,-1,-3); scene.add(rim);
+
+  var group=new THREE.Group(); group.position.y=0.3; scene.add(group);
+  var plane=new THREE.Plane(new THREE.Vector3(0,0,-1),100), worldPlane=new THREE.Plane(), cutOn=false;
+
+  var MATS={}; // id -> daftar material (untuk sorotan)
+  function mat(id,color,o){
+    o=o||{};
+    var m=new THREE.MeshStandardMaterial({color:color,roughness:o.rough||0.6,side:o.side||THREE.FrontSide,
+      transparent:!!o.op,opacity:o.op||1,depthWrite:!o.op,emissive:0x000000});
+    m.clippingPlanes=[worldPlane];
+    (MATS[id]=MATS[id]||[]).push(m); return m;
+  }
+  var partColor={}; PARTS.forEach(function(p){partColor[p.id]=p.color;});
+
+  // Jari-jari tuba sepanjang kurva (t = 0..1)
+  function R(t){
+    if(t<0.1) return 0.075;
+    if(t<0.38) return 0.075+0.02*(t-0.1)/0.28;
+    if(t<0.8) return 0.1+0.1*Math.pow((t-0.38)/0.42,1.3);
+    return 0.2+0.22*Math.pow((t-0.8)/0.2,1.8);
+  }
+  function foldAmp(t){ return t<0.1?0.05:t<0.38?0.09:t<0.8?0.28:0.3; }
+
+  function seg(curve,fr,i0,i1,scale,fold,material){
+    var pos=[],idx=[],w=M+1,i,j;
+    for(i=i0;i<=i1;i++){
+      var t=i/N, c=curve.getPointAt(t), nn=fr.normals[i], bb=fr.binormals[i];
+      for(j=0;j<=M;j++){
+        var a=j/M*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+        var r=R(t)*scale*(fold?1+foldAmp(t)*(0.5+0.5*Math.sin(8*a)):1);
+        pos.push(c.x+r*(nn.x*ca+bb.x*sa), c.y+r*(nn.y*ca+bb.y*sa), c.z+r*(nn.z*ca+bb.z*sa));
+      }
+    }
+    for(i=0;i<i1-i0;i++) for(j=0;j<M;j++){
+      var A=i*w+j, B=(i+1)*w+j, C=(i+1)*w+j+1, D=i*w+j+1;
+      idx.push(A,D,B, D,C,B);
+    }
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
+    return new THREE.Mesh(g,material);
+  }
+
+  var anchors={}; // jangkar label (sisi pertama saja)
+  function anchor(id,vec){ var o=new THREE.Object3D(); o.position.copy(vec); group.add(o); anchors[id]=o; }
+
+  function side(s){
+    var pts=[[0.5,0.38,0],[1.1,0.8,0.05],[1.8,0.92,-0.1],[2.5,0.7,0.1],[3.0,0.25,0],[3.25,-0.3,0.05]]
+      .map(function(a){return new V3(a[0]*s,a[1],a[2]);});
+    var curve=new THREE.CatmullRomCurve3(pts), fr=curve.computeFrenetFrames(N,false);
+    var cuts=[['intramural',0,0.1],['isthmus',0.1,0.38],['ampulla',0.38,0.8],['infundibulum',0.8,1]];
+    cuts.forEach(function(c){
+      var i0=Math.round(c[1]*N), i1=Math.round(c[2]*N);
+      group.add(seg(curve,fr,i0,i1,1,false,mat(c[0],partColor[c[0]],{side:THREE.DoubleSide,rough:0.5})));
+      group.add(seg(curve,fr,i0,i1,0.72,true,mat(c[0],0x9c3b52,{side:THREE.BackSide,rough:0.85})));
+      if(s>0){ var mid=curve.getPointAt((c[1]+c[2])/2); anchor(c[0],mid.clone().add(new V3(0,0.3,0))); }
+    });
+    // Fimbria di ujung corong
+    var P=curve.getPointAt(1), T=fr.tangents[N], nn=fr.normals[N], bb=fr.binormals[N], fm=mat('fimbria',partColor.fimbria,{side:THREE.DoubleSide,rough:0.5});
+    for(var k=0;k<14;k++){
+      var a=k/14*Math.PI*2, rad=nn.clone().multiplyScalar(Math.cos(a)).add(bb.clone().multiplyScalar(Math.sin(a)));
+      var len=0.9+0.25*Math.sin(k*2.3), base=P.clone().add(rad.clone().multiplyScalar(R(1)));
+      var fc=new THREE.CatmullRomCurve3([
+        base,
+        base.clone().add(rad.clone().multiplyScalar(0.08)).add(T.clone().multiplyScalar(0.14*len)),
+        base.clone().add(rad.clone().multiplyScalar(0.12)).add(T.clone().multiplyScalar(0.32*len)),
+        base.clone().add(rad.clone().multiplyScalar(0.04)).add(T.clone().multiplyScalar(0.5*len))
+      ]);
+      group.add(new THREE.Mesh(new THREE.TubeGeometry(fc,14,0.032,6,false),fm));
+    }
+    if(s>0) anchor('fimbria',P.clone().add(T.clone().multiplyScalar(0.3)).add(new V3(0.35,0,0)));
+
+    // Ovarium
+    var og=new THREE.SphereGeometry(1,48,32), p=og.attributes.position, v=new V3();
+    for(var i=0;i<p.count;i++){ v.fromBufferAttribute(p,i);
+      var k2=1+Math.sin(v.x*5+1)*Math.sin(v.y*6)*Math.sin(v.z*4+2)*0.05;
+      p.setXYZ(i,v.x*0.5*k2,v.y*0.62*k2,v.z*0.38*k2); }
+    og.computeVertexNormals();
+    var ov=new THREE.Mesh(og,mat('ovary',partColor.ovary,{rough:0.55,side:THREE.DoubleSide}));
+    var oc=new V3(3.15*s,-1.3,0.02); ov.position.copy(oc); ov.rotation.z=0.4*s; group.add(ov);
+    var fm2=mat('ovary',0xf2e6d4,{op:0.75,rough:0.2});
+    [[0.3,0.4,0.28],[-0.25,0.15,0.3],[0.2,-0.4,0.3],[-0.3,-0.2,0.28]].forEach(function(f){
+      var sp=new THREE.Mesh(new THREE.SphereGeometry(0.09,20,14),fm2);
+      sp.position.set(oc.x+f[0]*s,oc.y+f[1],oc.z+f[2]); group.add(sp);
+    });
+    if(s>0) anchor('ovary',oc.clone().add(new V3(0.1,-0.45,0.2)));
+  }
+  side(1); side(-1);
+
+  // Uterus
+  var prof=[[0,-1.7],[0.22,-1.65],[0.28,-1.3],[0.35,-0.9],[0.6,-0.4],[0.85,0.1],[0.85,0.45],[0.55,0.62],[0,0.68]]
+    .map(function(a){return new THREE.Vector2(a[0],a[1]);});
+  var ug=new THREE.LatheGeometry(prof,64);
+  var u1=new THREE.Mesh(ug,mat('uterus',partColor.uterus,{rough:0.6,side:THREE.FrontSide}));
+  var u2=new THREE.Mesh(ug,mat('uterus',0x7d2f45,{rough:0.9,side:THREE.BackSide}));
+  [u1,u2].forEach(function(m){m.scale.z=0.6; group.add(m);});
+  anchor('uterus',new V3(0,-0.9,0.4));
+
+  // Tombol dan legenda
+  var legend=document.getElementById('legend'), info=document.getElementById('info'), sel=null, labelsOn=true, tags={};
+  PARTS.forEach(function(t){
+    var b=document.createElement('button'); b.setAttribute('aria-pressed','false');
+    b.innerHTML='<span class="dot" style="background:#'+('000000'+t.color.toString(16)).slice(-6)+'"></span>'+t.name;
+    b.onclick=function(){ select(sel===t.id?null:t.id); }; t.btn=b; legend.appendChild(b);
+    var el=document.createElement('div'); el.className='tag'; el.textContent=t.name; stage.appendChild(el); tags[t.id]=el;
+  });
+  function select(id){
+    sel=id; PARTS.forEach(function(t){ t.btn.setAttribute('aria-pressed',String(t.id===id)); });
+    var t=PARTS.filter(function(x){return x.id===id;})[0]; info.textContent=t?t.desc:'';
+  }
+  select(null);
+  function toggle(btn,fn){ btn.onclick=function(){ var on=btn.getAttribute('aria-pressed')!=='true'; btn.setAttribute('aria-pressed',on); fn(on); }; }
+  var auto=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bRot=document.getElementById('bRot'); bRot.setAttribute('aria-pressed',String(auto));
+  toggle(document.getElementById('bCut'),function(on){cutOn=on; plane.constant=on?0:100;});
+  toggle(document.getElementById('bLab'),function(on){labelsOn=on;});
+  toggle(bRot,function(on){auto=on;});
+  var zoom=9.5;
+  document.getElementById('bIn').onclick=function(){zoom=Math.max(5.5,zoom-0.8);};
+  document.getElementById('bOut').onclick=function(){zoom=Math.min(14,zoom+0.8);};
+
+  var userY=0,userX=0.12,drag=false,lx=0,ly=0;
+  canvas.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
+  canvas.addEventListener('pointermove',function(e){ if(!drag)return;
+    userY+=(e.clientX-lx)*0.008; userX=Math.max(-1.3,Math.min(1.3,userX+(e.clientY-ly)*0.008)); lx=e.clientX;ly=e.clientY;});
+  function up(){drag=false;} canvas.addEventListener('pointerup',up); canvas.addEventListener('pointercancel',up);
+
+  function resize(){
+    var w=stage.clientWidth,h=stage.clientHeight; renderer.setSize(w,h,false);
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+    base=w/h<1?1.5:1; // layar sempit: mundurkan kamera
+  }
+  var base=1; new ResizeObserver(resize).observe(stage); resize();
+
+  var clock=new THREE.Clock(), tmp=new V3(), cen=new V3();
+  function frame(){
+    var t=clock.getElapsedTime();
+    group.rotation.x=userX;
+    group.rotation.y=userY+(auto&&!drag?Math.sin(t*0.5)*0.45:0);
+    camera.position.z+=(zoom*base-camera.position.z)*0.12;
+    group.updateMatrixWorld(true);
+    worldPlane.copy(plane).applyMatrix4(group.matrixWorld);
+    var pulse=0.25+0.2*Math.sin(t*4);
+    PARTS.forEach(function(p){ MATS[p.id].forEach(function(m){
+      m.emissive.setHex(p.id===sel?p.color:0x000000); m.emissiveIntensity=p.id===sel?pulse:0; }); });
+    renderer.render(scene,camera);
+    camera.updateMatrixWorld(); var inv=camera.matrixWorldInverse;
+    cen.set(0,0,0).applyMatrix4(group.matrixWorld).applyMatrix4(inv);
+    var W=stage.clientWidth,H=stage.clientHeight;
+    PARTS.forEach(function(p){
+      var an=anchors[p.id], el=tags[p.id]; an.getWorldPosition(tmp);
+      var vz=tmp.clone().applyMatrix4(inv).z; tmp.project(camera);
+      el.style.left=((tmp.x*0.5+0.5)*W)+'px'; el.style.top=((-tmp.y*0.5+0.5)*H)+'px';
+      el.style.opacity=(labelsOn&&vz>cen.z-0.8)?(sel&&sel!==p.id?0.35:1):0;
+    });
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>

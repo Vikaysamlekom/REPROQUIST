@@ -228,43 +228,72 @@ export default function OrganDetail() {
       <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* ------------------------- Viewer 3D ------------------------- */}
-          <motion.div {...panelMotion} className="lg:sticky lg:top-24 lg:self-start">
+          <motion.div
+            {...panelMotion}
+            className={organ.modelHtml ? '' : 'lg:sticky lg:top-24 lg:self-start'}
+          >
             <div className="overflow-hidden rounded-3xl border border-line bg-white shadow-card">
               <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
                 <p className="text-sm font-extrabold text-ink">Model 3D</p>
                 <p className="text-[11px] font-bold text-muted">
-                  {organ.cutaway
-                    ? 'Putar 360° · Zoom · Potongan'
-                    : 'Putar 360° · Zoom ⤢ · Sentuh di ponsel'}
+                  {organ.modelHtml
+                    ? 'Putar · Zoom · Potongan · Label'
+                    : organ.cutaway
+                      ? 'Putar 360° · Zoom · Potongan'
+                      : 'Putar 360° · Zoom ⤢ · Sentuh di ponsel'}
                 </p>
               </div>
 
-              <div className="h-[340px] w-full bg-gradient-to-b from-paper to-white sm:h-[420px]">
-                <OrganViewerWrapper
-                  modelPath={organ.modelPath}
-                  modelNote={organ.modelNote}
-                  accent={organ.accent}
-                  organName={organ.name}
-                  stages={organ.stages}
-                  cutaway={organ.cutaway}
-                  selectedStage={selectedStage}
+              {organ.modelHtml ? (
+                <iframe
+                  src={organ.modelHtml}
+                  title={`Model 3D interaktif ${organ.name}`}
+                  className="h-[860px] w-full border-0 bg-paper sm:h-[900px]"
+                  loading="lazy"
+                  allow="fullscreen"
                 />
-              </div>
+              ) : (
+                <div className="h-[340px] w-full bg-gradient-to-b from-paper to-white sm:h-[420px]">
+                  <OrganViewerWrapper
+                    modelPath={organ.modelPath}
+                    modelNote={organ.modelNote}
+                    accent={organ.accent}
+                    organName={organ.name}
+                    stages={organ.stages}
+                    cutaway={organ.cutaway}
+                    selectedStage={selectedStage}
+                  />
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-3">
                 <p className="text-[11px] text-muted">
                   {organ.modelPath
                     ? `Aset: ${organ.modelPath}`
-                    : organ.illustration
-                      ? 'Status: placeholder — ilustrasi 2D ada di panel sebelah.'
-                      : 'Status: placeholder — slot GLB/GLTF siap diisi.'}
+                    : organ.modelHtml
+                      ? `Aset: ${organ.modelHtml} · Three.js interaktif`
+                      : organ.illustration
+                        ? 'Status: placeholder — ilustrasi 2D ada di panel sebelah.'
+                        : 'Status: placeholder — slot GLB/GLTF siap diisi.'}
                 </p>
-                <span
-                  className="rounded-full px-2.5 py-1 text-[11px] font-extrabold"
-                  style={{ background: `${organ.accent}1f`, color: organ.accent }}
-                >
-                  {organ.name}
-                </span>
+                <div className="flex items-center gap-2">
+                  {organ.modelHtml && (
+                    <a
+                      href={organ.modelHtml}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-extrabold text-primary transition hover:underline"
+                    >
+                      Buka penuh ↗
+                    </a>
+                  )}
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[11px] font-extrabold"
+                    style={{ background: `${organ.accent}1f`, color: organ.accent }}
+                  >
+                    {organ.name}
+                  </span>
+                </div>
               </div>
             </div>
 
