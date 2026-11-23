@@ -360,6 +360,23 @@ Tidak ada backend — semua progres disimpan di perangkat siswa:
 Untuk mengembangkan ke tahap berikutnya (dengan database), ganti implementasi di
 `src/hooks/` — seluruh pemanggilan halaman sudah terpusat di sana.
 
+### Rekap nilai kuis ke Google Sheets
+
+1. Buat atau buka Google Spreadsheet, lalu pilih **Ekstensi → Apps Script**.
+2. Salin isi [`Code.gs`](./Code.gs) ke editor Apps Script dan simpan.
+3. Pilih **Deploy → New deployment → Web app**, atur **Execute as: Me** dan akses
+   **Anyone**, lalu deploy dan salin URL Web App yang berakhiran `/exec`.
+4. Masukkan URL deployment ke konstanta `GOOGLE_APPS_SCRIPT_URL` di
+   [`src/lib/quizResults.js`](./src/lib/quizResults.js), kemudian deploy ulang website.
+5. Siswa mengisi nama sebelum kuis dimulai. Guru membuka **Halaman Guru** pada halaman
+   kuis dan memasukkan password `1234` untuk memuat rekap bersama dari spreadsheet.
+   Gunakan tombol **Unduh CSV** pada rekap untuk mengunduh semua nilai yang tampil.
+
+Apps Script membuat tab **Rekap Kuis** secara otomatis. Tanpa URL deployment, nilai tetap
+tersimpan di browser yang digunakan dan tidak dibagikan ke perangkat lain. Password `1234`
+adalah gerbang sederhana, bukan autentikasi kuat; siapa pun yang dapat memeriksa kode situs
+berpotensi melihat atau melewatinya. Jangan gunakan rekap ini untuk data sensitif.
+
 ---
 
 ## 🎯 Teknologi

@@ -117,6 +117,15 @@ try {
   await evaljs(`localStorage.clear()`)
   await goto('/kuis', `document.body.innerText.includes('Tantangan Kuis')`)
 
+  await evaljs(`(() => {
+    const input = document.getElementById('student-name')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    setter.call(input, 'Siswa Uji')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    document.querySelector('form').requestSubmit()
+  })()`)
+  await sleep(500)
+
   // 12 soal: jawab opsi pertama pada tiap soal, klik tombol lanjut
   let answered = 0
   for (let i = 0; i < 20 && answered < 12; i++) {
@@ -150,12 +159,16 @@ try {
   const quizState = await evaljs(`(() => ({
     finished: document.body.innerText.includes('Kuis selesai!'),
     score: localStorage.getItem('rq_quiz_score'),
+    results: localStorage.getItem('rq_quiz_results'),
     progress: localStorage.getItem('rq_progress'),
     benar: (document.body.innerText.match(/(\\d+) benar/) || [])[1] || null,
   }))()`)
   ok('Kuis: menampilkan layar hasil', quizState.finished)
   ok('Kuis: skor tersimpan di LocalStorage', Boolean(quizState.score),
     String(quizState.score || '').slice(0, 80))
+  ok('Kuis: rekap menyimpan nama dan nilai siswa',
+    String(quizState.results || '').includes('Siswa Uji') &&
+      String(quizState.results || '').includes('"percent"'))
   ok('Kuis: progres misi tersimpan', String(quizState.progress || '').includes('kuis-selesai'))
 
   // Tombol ulang berfungsi
@@ -167,6 +180,59 @@ try {
   const backToFirst = await evaljs(`document.body.innerText.includes('Pertanyaan') &&
     document.body.innerText.includes('dari 12')`)
   ok('Kuis: tombol "Ulangi kuis" berfungsi', restarted && backToFirst)
+
+  await evaljs(`(() => {
+    [...document.querySelectorAll('button')]
+      .find(button => button.textContent.includes('Halaman Guru'))?.click()
+  })()`)
+  await sleep(350)
+  await evaljs(`(() => {
+    const input = document.getElementById('teacher-password')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    setter.call(input, '0000')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    document.querySelector('form').requestSubmit()
+  })()`)
+  await sleep(250)
+  const rejectedTeacherPassword = await evaljs(`document.body.innerText.includes('Password salah')`)
+  ok('Kuis: halaman guru menolak password salah', rejectedTeacherPassword)
+  await evaljs(`(() => {
+    const input = document.getElementById('teacher-password')
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    setter.call(input, '1234')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    document.querySelector('form').requestSubmit()
+  })()`)
+  await sleep(300)
+  const teacherHasResult = await evaljs(`document.body.innerText.includes('Siswa Uji') &&
+    document.body.innerText.includes('Rekap Nilai Siswa')`)
+  ok('Kuis: halaman guru menampilkan rekap lokal', teacherHasResult)
+  const csvResult = await evaljs(`(async () => {
+    const originalClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) {
+        window.__csvDownloadName = this.download
+        return
+      }
+      originalClick.call(this)
+    }
+    let csvBlob
+    const originalCreateObjectURL = URL.createObjectURL
+    URL.createObjectURL = (blob) => {
+      csvBlob = blob
+      return 'blob:csv-test'
+    }
+    const button = [...document.querySelectorAll('button')]
+      .find(item => item.textContent.includes('Unduh CSV'))
+    button?.click()
+    const text = csvBlob ? await csvBlob.text() : ''
+    URL.createObjectURL = originalCreateObjectURL
+    HTMLAnchorElement.prototype.click = originalClick
+    return { name: window.__csvDownloadName, text }
+  })()`)
+  ok('Kuis: ekspor CSV memuat nama dan kolom nilai',
+    csvResult.name?.endsWith('.csv') && csvResult.text.includes('Nama') &&
+      csvResult.text.includes('Siswa Uji') && csvResult.text.includes('Nilai (%)'))
 
   // ================= 2. MENCOCOKKAN ORGAN =================
   console.log('\n--- 2. Mencocokkan organ ---')

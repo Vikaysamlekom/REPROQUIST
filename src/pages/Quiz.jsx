@@ -4,6 +4,17 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import PageHero from '../components/common/PageHero.jsx'
 import { QUIZ_QUESTIONS } from '../data/quiz.js'
 import { useQuizScore, useProgress } from '../hooks/useProgress.js'
+import {
+  buildQuizResultsCsv,
+  fetchQuizResults,
+  getLocalQuizResults,
+  isQuizSheetConfigured,
+  mergeQuizResults,
+  saveLocalQuizResult,
+  submitQuizResult,
+} from '../lib/quizResults.js'
+
+const TEACHER_PASSWORD = '1234'
 
 function shuffleQuestions() {
   const arr = [...QUIZ_QUESTIONS]
@@ -25,6 +36,15 @@ export default function Quiz() {
   const [score, setLocalScore] = useState(0)
   const [wrong, setWrong] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [mode, setMode] = useState('entry')
+  const [quizStarted, setQuizStarted] = useState(false)
+  const [studentName, setStudentName] = useState('')
+  const [teacherPassword, setTeacherPassword] = useState('')
+  const [teacherAuthenticated, setTeacherAuthenticated] = useState(false)
+  const [teacherError, setTeacherError] = useState('')
+  const [results, setResults] = useState([])
+  const [resultsMessage, setResultsMessage] = useState('')
+  const [syncMessage, setSyncMessage] = useState('')
 
   const question = questions[index]
   const total = questions.length
@@ -39,7 +59,42 @@ export default function Quiz() {
   const next = () => {
     if (index + 1 >= total) {
       const finalScore = score
-      setScore({ score: finalScore, total, date: new Date().toISOString() })
+      const date = new Date().toISOString()
+      const result = {
+        id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: studentName,
+        score: finalScore,
+        total,
+        percent: Math.round((finalScore / total) * 100),
+        date,
+      }
+      setScore({ ...result })
+      let localSaveFailed = false
+      try {
+        saveLocalQuizResult(result)
+      } catch {
+        localSaveFailed = true
+      }
+      setSyncMessage(
+        localSaveFailed
+          ? 'Penyimpanan lokal gagal. Sedang mencoba mengirim nilai ke Google Sheets...'
+          : isQuizSheetConfigured()
+          ? 'Sedang mengirim nilai ke Google Sheets...'
+          : 'Nilai tersimpan di perangkat ini. Google Sheets belum dihubungkan.',
+      )
+      if (isQuizSheetConfigured()) {
+        submitQuizResult(result)
+          .then(() => setSyncMessage(
+            localSaveFailed
+              ? 'Nilai berhasil dikirim ke Google Sheets, tetapi penyimpanan lokal gagal.'
+              : 'Nilai berhasil dikirim ke Google Sheets.',
+          ))
+          .catch((error) => setSyncMessage(
+            `${localSaveFailed ? 'Penyimpanan lokal gagal dan ' : ''}gagal mengirim nilai ke Google Sheets: ${error.message}`,
+          ))
+      } else if (localSaveFailed) {
+        setSyncMessage('Penyimpanan nilai gagal. Google Sheets belum dihubungkan.')
+      }
       markDone('kuis-selesai')
       setFinished(true)
       return
@@ -54,6 +109,83 @@ export default function Quiz() {
     setLocalScore(0)
     setWrong(0)
     setFinished(false)
+    setSyncMessage('')
+    setMode('quiz')
+    setQuizStarted(true)
+  }
+
+  const startQuiz = (event) => {
+    event.preventDefault()
+    const name = studentName.trim()
+    if (!name) return
+    setStudentName(name)
+    setIndex(0)
+    setPicked(null)
+    setLocalScore(0)
+    setWrong(0)
+    setFinished(false)
+    setMode('quiz')
+    setQuizStarted(true)
+  }
+
+  const openTeacherPage = () => {
+    setResults(getLocalQuizResults())
+    setResultsMessage('')
+    setTeacherError('')
+    setMode('teacher')
+  }
+
+  const loginTeacher = async (event) => {
+    event.preventDefault()
+    if (teacherPassword !== TEACHER_PASSWORD) {
+      setTeacherError('Password salah. Silakan coba lagi.')
+      return
+    }
+
+    setTeacherAuthenticated(true)
+    setTeacherError('')
+    setResults(getLocalQuizResults())
+    if (!isQuizSheetConfigured()) {
+      setResultsMessage('Menampilkan hasil di perangkat ini. Google Sheets belum dihubungkan.')
+      return
+    }
+
+    setResultsMessage('Memuat rekap dari Google Sheets...')
+    try {
+      const sheetResults = await fetchQuizResults(teacherPassword)
+      setResults(mergeQuizResults(getLocalQuizResults(), sheetResults))
+      setResultsMessage(`Rekap Google Sheets berhasil dimuat (${sheetResults.length} hasil).`)
+    } catch (error) {
+      setResultsMessage(`Gagal memuat Google Sheets: ${error.message}`)
+    }
+  }
+
+  const refreshTeacherResults = async () => {
+    setResults(getLocalQuizResults())
+    if (!isQuizSheetConfigured()) {
+      setResultsMessage('Menampilkan hasil di perangkat ini. Google Sheets belum dihubungkan.')
+      return
+    }
+    setResultsMessage('Memuat ulang rekap...')
+    try {
+      const sheetResults = await fetchQuizResults(teacherPassword)
+      setResults(mergeQuizResults(getLocalQuizResults(), sheetResults))
+      setResultsMessage(`Rekap Google Sheets berhasil dimuat (${sheetResults.length} hasil).`)
+    } catch (error) {
+      setResultsMessage(`Gagal memuat Google Sheets: ${error.message}`)
+    }
+  }
+
+  const downloadResultsCsv = () => {
+    const blob = new Blob([buildQuizResultsCsv(results)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `rekap-nilai-kuis-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const percent = Math.round((score / total) * 100)
@@ -84,8 +216,142 @@ export default function Quiz() {
       />
 
       <section className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
-        {!finished ? (
+        {mode === 'teacher' ? (
+          <div className="rounded-3xl border border-line bg-white p-6 shadow-card sm:p-8">
+            <button
+              type="button"
+              onClick={() => setMode(quizStarted ? 'quiz' : 'entry')}
+              className="mb-5 text-sm font-bold text-primary hover:text-primary-dark"
+            >
+              ← Kembali ke kuis
+            </button>
+            {!teacherAuthenticated ? (
+              <>
+                <h2 className="font-display text-2xl font-extrabold text-ink">Halaman Guru</h2>
+                <p className="mt-2 text-sm text-muted">Masukkan password untuk melihat rekap nilai siswa.</p>
+                <form onSubmit={loginTeacher} className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <label className="sr-only" htmlFor="teacher-password">Password guru</label>
+                  <input
+                    id="teacher-password"
+                    type="password"
+                    value={teacherPassword}
+                    onChange={(event) => setTeacherPassword(event.target.value)}
+                    placeholder="Password guru"
+                    autoComplete="current-password"
+                    className="min-w-0 flex-1 rounded-xl border-2 border-line px-4 py-3 outline-none focus:border-primary"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-primary px-6 py-3 font-extrabold text-white hover:bg-primary-dark"
+                  >
+                    Lihat rekap
+                  </button>
+                </form>
+                {teacherError && <p role="alert" className="mt-3 text-sm font-bold text-rose-600">{teacherError}</p>}
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-2xl font-extrabold text-ink">Rekap Nilai Siswa</h2>
+                    <p className="mt-1 text-sm text-muted">{results.length} hasil tersimpan</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={refreshTeacherResults}
+                      className="rounded-xl border-2 border-line px-4 py-2 text-sm font-bold text-ink hover:border-primary"
+                    >
+                      Muat ulang
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadResultsCsv}
+                      disabled={!results.length}
+                      className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Unduh CSV
+                    </button>
+                  </div>
+                </div>
+                {resultsMessage && <p role="status" className="mt-4 text-sm text-muted">{resultsMessage}</p>}
+                {results.length ? (
+                  <div className="mt-5 overflow-x-auto rounded-xl border border-line">
+                    <table className="w-full min-w-[560px] text-left text-sm">
+                      <thead className="bg-paper text-xs uppercase text-muted">
+                        <tr>
+                          <th className="px-4 py-3">Nama</th>
+                          <th className="px-4 py-3">Nilai</th>
+                          <th className="px-4 py-3">Persentase</th>
+                          <th className="px-4 py-3">Waktu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((result) => (
+                          <tr key={result.id} className="border-t border-line">
+                            <td className="px-4 py-3 font-bold text-ink">{result.name}</td>
+                            <td className="px-4 py-3">{result.score} / {result.total}</td>
+                            <td className="px-4 py-3">{result.percent}%</td>
+                            <td className="px-4 py-3 text-muted">
+                              {new Date(result.date).toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="mt-5 rounded-xl bg-paper p-5 text-sm text-muted">Belum ada nilai kuis.</p>
+                )}
+              </>
+            )}
+            <p className="mt-5 text-xs text-muted">
+              Password halaman ini adalah gerbang sederhana di sisi browser, bukan perlindungan data yang kuat.
+            </p>
+          </div>
+        ) : mode === 'entry' ? (
+          <div className="rounded-3xl border border-line bg-white p-6 shadow-card sm:p-8">
+            <h2 className="font-display text-2xl font-extrabold text-ink">Sebelum mulai</h2>
+            <p className="mt-2 text-sm text-muted">Isi nama agar hasil kuis bisa dicatat di rekap nilai.</p>
+            <form onSubmit={startQuiz} className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <label className="sr-only" htmlFor="student-name">Nama siswa</label>
+              <input
+                id="student-name"
+                type="text"
+                value={studentName}
+                onChange={(event) => setStudentName(event.target.value)}
+                placeholder="Nama siswa"
+                maxLength={100}
+                required
+                className="min-w-0 flex-1 rounded-xl border-2 border-line px-4 py-3 outline-none focus:border-primary"
+              />
+              <button
+                type="submit"
+                className="rounded-xl bg-primary px-6 py-3 font-extrabold text-white shadow-pop hover:bg-primary-dark"
+              >
+                Mulai kuis →
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={openTeacherPage}
+              className="mt-5 rounded-xl border-2 border-line px-5 py-2.5 text-sm font-bold text-ink hover:border-primary"
+            >
+              Halaman Guru · Rekap nilai
+            </button>
+          </div>
+        ) : !finished ? (
           <>
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-muted">Peserta: <span className="text-ink">{studentName}</span></p>
+              <button
+                type="button"
+                onClick={openTeacherPage}
+                className="text-sm font-bold text-primary hover:text-primary-dark"
+              >
+                Halaman Guru
+              </button>
+            </div>
             {/* Progres kuis */}
             <div className="flex items-center justify-between gap-4">
               <p className="text-sm font-extrabold text-muted">
@@ -204,11 +470,14 @@ export default function Quiz() {
             </div>
 
             <p className="mx-auto mt-4 max-w-md text-sm text-muted">{bestMessage}</p>
+            <p role="status" className="mt-4 text-sm text-muted">{syncMessage}</p>
 
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <button
                 type="button"
-                onClick={restart}
+                onClick={() => {
+                  restart()
+                }}
                 className="rounded-2xl bg-primary px-6 py-3.5 font-extrabold text-white shadow-pop transition hover:-translate-y-0.5 hover:bg-primary-dark"
               >
                 🔄 Ulangi kuis
